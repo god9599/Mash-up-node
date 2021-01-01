@@ -2,8 +2,8 @@
 
 const express = require('express');
 const {v4: uuidv4} = require('uuid');
-const {User, Domain} = require('../models');
-const {isLoggedIn} = require('./middlewares');
+const {User, Domain, Post, Hashtag} = require('../models');
+const {isLoggedIn, verifyToken} = require('./middlewares');
 
 const router = express.Router();
 
@@ -35,6 +35,47 @@ router.post('/domain', isLoggedIn, async(req, res, next) => {
     }catch(err){
         console.error(err);
         next(err);
+    }
+});
+
+router.get('/posts/my', verifyToken, (req, res) => {
+    Post.findAll({ where : {userId : req.decoded.id} })
+        .then((posts) => {
+            console.log(posts);
+            res.json({
+                code : 200,
+                payload : posts,
+            });
+        })
+        .catch((error) => {
+            console.error
+            return res.status(500).json({
+                code : 500,
+                message : '서버 에러',
+            });
+        });
+});
+
+router.get('/posts/hashtag/:title', verifyToken, async (req, res) => {
+    try{
+        const hashtag = await Hashtag.findOne({ where : {title : req.params.id} });
+        if(!hashtag){
+            return res.status(404).json({
+                code : 404,
+                message : '검색 결과가 없습니다.',
+            });
+        }
+        const posts = await hashtag.getPosts();
+        return res.json({
+            code : 200,
+            payload : posts,
+        });
+    }catch(error){
+        console.error(error);
+        return res.status(500).json({
+            code : 500,
+            message : '서버 에러',
+        });
     }
 });
 
